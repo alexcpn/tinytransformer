@@ -11,8 +11,8 @@ d_model = 512  # embediding size
 d_k = 64  # attention size
 seq_length = 1000
 
-model_path = "model_weights.pth"
-outfile='eval_transformer.log'
+model_path = "model_weights_mh.pth"
+outfile='multihead_eval_transformer.log'
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -21,9 +21,6 @@ log.basicConfig(level=log.INFO,
                     log.StreamHandler()
                 ],
                 )
-
-#prompt = "Bloom lived in a big garden"
-prompt = "THe Cat chase the "
 
 
 class PositionalEncoding(nn.Module):
@@ -108,25 +105,28 @@ token_embedding = nn.Embedding(
     num_embeddings=vocab_size, embedding_dim=d_model)
 pos_encoding = PositionalEncoding(d_model, max_len=seq_length)
 # add in the attention layer
-attention_mod = SingleHeadSelfAttention(d_model)
-# Add a linear layer for prediction
-prediction_layer1 = nn.Linear(d_model, vocab_size*2)
-prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
-layer_norm = nn.LayerNorm(d_model)
 
+# Add a linear layer for prediction
+num_heads=2
+multihead_attention = nn.ModuleList()
+for _ in range(num_heads):
+    attention_mod = SingleHeadSelfAttention(d_model)
+    multihead_attention.append(attention_mod)
+    
+prediction_layer1 = nn.Linear(d_model*num_heads, vocab_size*2) # as we are concatenating the heads output
+layer_norm1 = nn.LayerNorm(vocab_size*2) 
+prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
+layer_norm2 = nn.LayerNorm(vocab_size) # last dimension is the vocab size
 
 # We'll combine these into a simple pipeline
 model = nn.ModuleList([token_embedding, pos_encoding,
-                      attention_mod,layer_norm,prediction_layer1,prediction_layer2])
+                      multihead_attention,layer_norm1,layer_norm2,prediction_layer1,prediction_layer2])
 
 # The most important part is the Stochastic Gradient Descent part
 # Using model.parameters() in optimizer.step() ensures all layers, including token_embedding, attention_mod, and prediction_layer, are updated
-# gradient descent since this is a toy example
 # optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4) # SGD is unstable and hence we use this
 
-sp = spm.SentencePieceProcessor()
-sp.load("llama_like.model")
 
 # Place all in GPU
 token_embedding.to('cuda')
@@ -136,35 +136,43 @@ prediction_layer1.to('cuda')
 prediction_layer2.to('cuda')
 model.to('cuda')
 
-log.info("Loading the  model...")
 
 
 # load the model for evaluation
 model.load_state_dict(torch.load(model_path))
 model.eval()  # Set to evaluation mode
 
+# Test the generation function
+prompt = "Bloom lived in a big garden"
+sp = spm.SentencePieceProcessor()
+sp.load("llama_like.model")
 
 generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
-tokens = sp.encode(prompt, out_type=str)
-token_ids = sp.encode(prompt, out_type=int)
-
-log.info(f"Sentence: {prompt}")
-log.info(f"Tokens:  {tokens}")
-log.info(f"Token IDs: {token_ids}")
 
 # Convert to tensor
 input_tensor = torch.tensor(
     generated_tokens, dtype=torch.long).unsqueeze(0)  # (1, seq_length)
-max_length = 10
+max_length = 100
 for _ in range(max_length):
     # Get embedding
     embedded_tokens = token_embedding(input_tensor.to('cuda'))
+    pos_embedded_tokens = pos_encoding(embedded_tokens)
+    # Initialize an empty list to store scores
+    head_outputs = []
     # Get attention and score
-    score, attention = attention_mod(embedded_tokens)
+    # get attention and score from multihead attention
+    for attention_mod in multihead_attention:
+        score,_ = attention_mod(pos_embedded_tokens)
+        head_outputs.append(score)
+    #Convert list of scores into a single tensor (concatenation or summation)
+    score = torch.cat(head_outputs, dim=-1)  # Concatenate along the last dimension
+    #print(score.shape) # torch.Size([50, 999, 1024]) #  #last dim is dmodel*2 (num_heads)
     # Predict the next word
-    hidden1 = prediction_layer1(score)  # (1, seq_length, vocab_size)
-    logits = prediction_layer2(hidden1)  # (1, seq_length, vocab_size)
-    
+    hidden1 = prediction_layer1(score)  # Project to vocabulary size
+    hidden1 = layer_norm1(hidden1)         # add layer norm
+    logits = prediction_layer2(hidden1)  # through few linear layers
+    logits = layer_norm2(logits)      # add layer norm
+    logits = layer_norm2(logits)
     # Get the last token's logits (for autoregressive prediction)
     next_token_logits = logits[:, -1, :]  # Shape: (1, vocab_size)
     # Convert logits to token probabilities
@@ -178,8 +186,6 @@ for _ in range(max_length):
     # Update input tensor with new token for next iteration
     input_tensor = torch.tensor(
         generated_tokens, dtype=torch.long).unsqueeze(0)
-
-# Test the generation function
 
 # Decode generated token IDs back to text
 generated_text = sp.decode(generated_tokens)

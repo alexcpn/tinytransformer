@@ -248,7 +248,7 @@ for _ in range(num_heads):
     attention_mod = SingleHeadSelfAttention(d_model)
     multihead_attention.append(attention_mod)
     
-prediction_layer1 = nn.Linear(d_model, vocab_size*2)
+prediction_layer1 = nn.Linear(d_model*num_heads, vocab_size*2) # as we are concatenating the heads output
 layer_norm1 = nn.LayerNorm(vocab_size*2) 
 prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
 layer_norm2 = nn.LayerNorm(vocab_size) # last dimension is the vocab size
@@ -283,7 +283,7 @@ model.to('cuda')
 log.info("Training model...")
 
 model.train()
-batch_size = 50
+batch_size = 25
 N, seq_length = input_ids.shape
 log.info(f"N= {N} seq_length= {seq_length}")
 num_batches = N // batch_size
@@ -362,7 +362,7 @@ for epoch in range(10):
 """# Use the trained model to predict"""
 
 # save the model weights
-torch.save(model.state_dict(), "model_weights.pth")
+torch.save(model.state_dict(), "model_weights_mh.pth")
 log.info("Model weights saved")
 model.eval()  # Set to evaluation mode
 
@@ -378,12 +378,22 @@ max_length = 100
 for _ in range(max_length):
     # Get embedding
     embedded_tokens = token_embedding(input_tensor.to('cuda'))
+    pos_embedded_tokens = pos_encoding(embedded_tokens)
+    # Initialize an empty list to store scores
+    head_outputs = []
     # Get attention and score
-    score, attention = attention_mod(embedded_tokens)
+    # get attention and score from multihead attention
+    for attention_mod in multihead_attention:
+        score,_ = attention_mod(pos_embedded_tokens)
+        head_outputs.append(score)
+    #Convert list of scores into a single tensor (concatenation or summation)
+    score = torch.cat(head_outputs, dim=-1)  # Concatenate along the last dimension
+    #print(score.shape) # torch.Size([50, 999, 1024]) #  #last dim is dmodel*2 (num_heads)
     # Predict the next word
-    hidden1 = prediction_layer1(score)  # (1, seq_length, vocab_size)
-    logits = prediction_layer2(hidden1)  # (1, seq_length, vocab_size)
-    # add layer norm
+    hidden1 = prediction_layer1(score)  # Project to vocabulary size
+    hidden1 = layer_norm1(hidden1)         # add layer norm
+    logits = prediction_layer2(hidden1)  # through few linear layers
+    logits = layer_norm2(logits)      # add layer norm
     logits = layer_norm2(logits)
     # Get the last token's logits (for autoregressive prediction)
     next_token_logits = logits[:, -1, :]  # Shape: (1, vocab_size)

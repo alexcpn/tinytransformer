@@ -313,6 +313,7 @@ for epoch in range(10):
         pos_embedded_tokens = pos_encoding(embedded_tokens)
         # get attention and score
         score,_ = attention_mod(pos_embedded_tokens)
+        #print(score.shape) # torch.Size([50, 999, 512]) #last dim is dmodel
         # Predict the next word
         hidden1 = prediction_layer1(score)  # Project to vocabulary size
         hidden1 = layer_norm1(hidden1)         # add layer norm
@@ -348,7 +349,7 @@ for epoch in range(10):
 """# Use the trained model to predict"""
 
 # save the model weights
-torch.save(model.state_dict(), "model_weights.pth")
+torch.save(model.state_dict(), "model_weights_sh.pth")
 log.info("Model weights saved")
 model.eval()  # Set to evaluation mode
 
