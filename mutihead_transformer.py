@@ -31,7 +31,9 @@ import sentencepiece as spm
 from datasets import load_dataset
 import math
 import logging as log
-outfile='simple_ransformer.log'
+import os
+
+outfile='simple_transformer.log'
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -40,14 +42,14 @@ log.basicConfig(level=log.INFO,
                     log.StreamHandler()
                 ],
                 )
-train_limit = 10000
+
 # Load the small dataset for training our tiny language model
 ds = load_dataset("roneneldan/TinyStories")
-
+train_size =100000
 # use the dataset as text for training
 log.info(f"Length of trainig data is  {len(ds['train']['text'])}")
 # use half of this training data text
-trainingdata = ds['train']['text'][:train_limit]
+trainingdata = ds['train']['text'][:train_size]
 log.info(f"Limiting training legth to {len(trainingdata)}")
 
 # 1) Write the list to a file.
@@ -57,7 +59,14 @@ with open("train.txt", "w", encoding="utf-8") as f:
         #replace special characters
         line = line.replace("â€", "")
         f.write(line.replace("\n", " ") + "\n")
-
+# for vocabulary training
+# trainingdata2 = ds['train']['text'][:10000]
+# with open("vocabtrain.txt", "w", encoding="utf-8") as f:
+#     for line in trainingdata2:
+#         # replace newline with space to keep each original text chunk on a single line
+#         f.write(line.replace("\n", " ") + "\n")
+test_sentence = "The Cat sat on the Fence"
+# We use a small vocab_size just for demo. LLaMA uses a much larger vocabulary (32k tokens).
 vocab_size = 2000
 
 # if file is not there
@@ -77,9 +86,6 @@ spm.SentencePieceTrainer.Train(
 sp = spm.SentencePieceProcessor()
 sp.load("llama_like.model")
 
-
-test_sentence = "The Cat sat on the Fence"
-# We use a small vocab_size just for demo. LLaMA uses a much larger vocabulary (32k tokens).
 tokens = sp.encode(test_sentence, out_type=str)
 token_ids = sp.encode(test_sentence, out_type=int)
 
@@ -97,16 +103,27 @@ log.info(f"Token IDs: {token_ids}")
 # Now lets tokenise the entire text and generate a map of input_ids
 all_token_ids = []
 
-log.info("Tokenizing text...")
-
-with open("train.txt", "r", encoding="utf-8") as f:
-    for line in f:
-        # Encode each line to token IDs
-        line_ids = sp.encode(line, out_type=int)
-        # Append them, maybe add a special token like <eol> if desired
-        all_token_ids.extend(line_ids)
-        # all_token_ids.append(eol_id)  # If you have a special EOL token
-
+if not os.path.isfile("token_ids.txt"):
+    log.info("Tokenizing text...")
+    with open("train.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            # Encode each line to token IDs
+            line_ids = sp.encode(line, out_type=int)
+            # Append them, maybe add a special token like <eol> if desired
+            all_token_ids.extend(line_ids)
+            # all_token_ids.append(eol_id)  # If you have a special EOL token
+    # Write token IDs to file
+    with open("token_ids.txt", "w", encoding="utf-8") as f:
+        for token_id in all_token_ids:
+            f.write(f"{token_id}\n")
+else:
+    log.info("Token ids already present in file")
+    #read token ids from file
+    all_token_ids = []
+    with open("token_ids.txt", "r", encoding="utf-8") as f:
+        for line in f:
+            all_token_ids.append(int(line))
+        
 log.info(f"Total tokens:  {len(all_token_ids)}")
 
 # Lets resize the input ids for training
@@ -185,8 +202,6 @@ class SingleHeadSelfAttention(nn.Module):
         self.W_Q = nn.Linear(d_model, d_model, bias=False)
         self.W_K = nn.Linear(d_model, d_model, bias=False)
         self.W_V = nn.Linear(d_model, d_model, bias=False)
-        # A LayerNorm to normalize across the last dimension (d_model)
-      
 
     def forward(self, x):
         """
@@ -213,8 +228,6 @@ class SingleHeadSelfAttention(nn.Module):
         score = torch.matmul(attention, V)
         # ----- [1] Add residual connection ----- ttodo take this out
         out = x + score # without this the model output is not good
-        # Generated Text=Bloom lived in a big garden forestforestâ€œHelloœHelloœHello
-
         return out, attention
 
 
@@ -230,26 +243,23 @@ pos_encoding = PositionalEncoding(d_model, max_len=seq_length)
 attention_mod = SingleHeadSelfAttention(d_model)
 # Add a linear layer for prediction
 prediction_layer1 = nn.Linear(d_model, vocab_size*2)
+layer_norm1 = nn.LayerNorm(vocab_size*2) 
 prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
-layer_norm = nn.LayerNorm(d_model)
+layer_norm2 = nn.LayerNorm(vocab_size) # last dimension is the vocab size
+
 
 # Define the loss function
 loss_function = nn.CrossEntropyLoss()
 log.info(f"Length of input ids ={len(input_ids)}")
-num_heads =2
-#  Create multiple attention heads as a ModuleList
-attention_mod = nn.ModuleList([SingleHeadSelfAttention(d_model) for _ in range(num_heads)])
 
 # We'll combine these into a simple pipeline
 model = nn.ModuleList([token_embedding, pos_encoding,
-                      *attention_mod, #xpand attention_mod inside model using *attention_mod so that all heads are included.
-                      layer_norm,prediction_layer1,prediction_layer2])
+                      attention_mod,layer_norm1,layer_norm2,prediction_layer1,prediction_layer2])
 
 # The most important part is the Stochastic Gradient Descent part
 # Using model.parameters() in optimizer.step() ensures all layers, including token_embedding, attention_mod, and prediction_layer, are updated
-# gradient descent since this is a toy example
 # optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
+optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4) # SGD is unstable and hence we use this
 
 # with higher learning loss is Nan
 
@@ -259,9 +269,7 @@ assert False == torch.isinf(input_ids).any()
 # Place all in GPU
 token_embedding.to('cuda')
 pos_encoding.to('cuda')
-for i in range(num_heads):
-    attention_mod[i] =attention_mod[i].to('cuda')
-#attention_mod.to('cuda')
+attention_mod.to('cuda')
 prediction_layer1.to('cuda')
 prediction_layer2.to('cuda')
 model.to('cuda')
@@ -269,7 +277,7 @@ model.to('cuda')
 log.info("Training model...")
 
 model.train()
-batch_size = 20
+batch_size = 50
 N, seq_length = input_ids.shape
 log.info(f"N= {N} seq_length= {seq_length}")
 num_batches = N // batch_size
@@ -295,28 +303,21 @@ for epoch in range(10):
         #    shape -> (B, seq_length-1)
         trimmed_input = batch_input[:, :-1]
         target_labels = batch_labels[:, 1:]
-        # if epoch == 0 and start_idx == 0:
-        #     # take 10 tokens
-        #     log.info(
-        #         f"Example input: {sp.decode(trimmed_input[0].tolist()[:10])}")
-        #     log.info(
-        #         f"Example labels: {sp.decode(target_labels[0].tolist()[:10])}")
+        if epoch == 0 and start_idx == 0:
+            # take 10 tokens
+            log.info("Example input: %s", sp.decode(trimmed_input[0].tolist()[:10]))
+            log.info("Example labels: %s",sp.decode(target_labels[0].tolist()[:10]))
 
         embedded_tokens = token_embedding(trimmed_input)
         # shape remains (batch_size, seq_len, d_model)
         pos_embedded_tokens = pos_encoding(embedded_tokens)
-        # Initialize score tensor
-        score = torch.zeros((num_heads, *pos_embedded_tokens.shape), device=pos_embedded_tokens.device)
         # get attention and score
-        for i in range(num_heads):
-            score[i],_ = attention_mod[i](pos_embedded_tokens)
-        # add the scores
-        score = torch.cat(score, dim=0)
+        score,_ = attention_mod(pos_embedded_tokens)
         # Predict the next word
         hidden1 = prediction_layer1(score)  # Project to vocabulary size
+        hidden1 = layer_norm1(hidden1)         # add layer norm
         logits = prediction_layer2(hidden1)  # through few linear layers
-         # add layer norm
-        logits = layer_norm(logits)
+        logits = layer_norm2(logits)      # add layer norm
         # the last dimension of the output tensor represents the vocabulary size or the number of classes.
         # Therefore, applying softmax along the last dimension (dim=-1)
         predicted_probs = torch.softmax(logits, dim=-1)  # Get probabilities
@@ -333,7 +334,7 @@ for epoch in range(10):
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         # print training progress occasionally
-        if (start_idx // batch_size) % 100 == 0:
+        if (start_idx // batch_size) % 50 == 0:
             log.info("[Epoch=%d | Batch=%d] loss=%.4f", epoch+1, start_idx//batch_size, loss.item())
         if loss.item() < 0.5:
             break
@@ -342,7 +343,7 @@ for epoch in range(10):
         del batch_labels
         torch.cuda.empty_cache()
 
-    log.info("---------Epoch %02d | Loss: %.4f", epoch+1, loss.item())
+    log.info(f"---------Epoch {epoch+1:02d} | Loss: {loss.item():.4f}")
 
 """# Use the trained model to predict"""
 
@@ -359,7 +360,7 @@ generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
 # Convert to tensor
 input_tensor = torch.tensor(
     generated_tokens, dtype=torch.long).unsqueeze(0)  # (1, seq_length)
-max_length = 10
+max_length = 100
 for _ in range(max_length):
     # Get embedding
     embedded_tokens = token_embedding(input_tensor.to('cuda'))
@@ -368,7 +369,8 @@ for _ in range(max_length):
     # Predict the next word
     hidden1 = prediction_layer1(score)  # (1, seq_length, vocab_size)
     logits = prediction_layer2(hidden1)  # (1, seq_length, vocab_size)
-    
+    # add layer norm
+    logits = layer_norm2(logits)
     # Get the last token's logits (for autoregressive prediction)
     next_token_logits = logits[:, -1, :]  # Shape: (1, vocab_size)
     # Convert logits to token probabilities
