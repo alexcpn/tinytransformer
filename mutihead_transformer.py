@@ -240,8 +240,14 @@ token_embedding = nn.Embedding(
     num_embeddings=vocab_size, embedding_dim=d_model)
 pos_encoding = PositionalEncoding(d_model, max_len=seq_length)
 # add in the attention layer
-attention_mod = SingleHeadSelfAttention(d_model)
+
 # Add a linear layer for prediction
+num_heads=2
+multihead_attention = nn.ModuleList()
+for _ in range(num_heads):
+    attention_mod = SingleHeadSelfAttention(d_model)
+    multihead_attention.append(attention_mod)
+    
 prediction_layer1 = nn.Linear(d_model, vocab_size*2)
 layer_norm1 = nn.LayerNorm(vocab_size*2) 
 prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
@@ -254,7 +260,7 @@ log.info(f"Length of input ids ={len(input_ids)}")
 
 # We'll combine these into a simple pipeline
 model = nn.ModuleList([token_embedding, pos_encoding,
-                      attention_mod,layer_norm1,layer_norm2,prediction_layer1,prediction_layer2])
+                      multihead_attention,layer_norm1,layer_norm2,prediction_layer1,prediction_layer2])
 
 # The most important part is the Stochastic Gradient Descent part
 # Using model.parameters() in optimizer.step() ensures all layers, including token_embedding, attention_mod, and prediction_layer, are updated
@@ -311,8 +317,16 @@ for epoch in range(10):
         embedded_tokens = token_embedding(trimmed_input)
         # shape remains (batch_size, seq_len, d_model)
         pos_embedded_tokens = pos_encoding(embedded_tokens)
-        # get attention and score
-        score,_ = attention_mod(pos_embedded_tokens)
+        # Initialise the scores
+        # Initialize an empty list to store scores
+        head_outputs = []
+        # get attention and score from multihead attention
+        for attention_mod in multihead_attention:
+            score,_ = attention_mod(pos_embedded_tokens)
+            head_outputs.append(score)
+        #Convert list of scores into a single tensor (concatenation or summation)
+        score = torch.cat(head_outputs, dim=-1)  # Concatenate along the last dimension
+        #print(score.shape) # torch.Size([50, 999, 1024]) #  #last dim is dmodel*2 (num_heads)
         # Predict the next word
         hidden1 = prediction_layer1(score)  # Project to vocabulary size
         hidden1 = layer_norm1(hidden1)         # add layer norm
