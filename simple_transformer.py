@@ -243,8 +243,9 @@ pos_encoding = PositionalEncoding(d_model, max_len=seq_length)
 attention_mod = SingleHeadSelfAttention(d_model)
 # Add a linear layer for prediction
 prediction_layer1 = nn.Linear(d_model, vocab_size*2)
+layer_norm1 = nn.LayerNorm(vocab_size*2) 
 prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
-layer_norm = nn.LayerNorm(vocab_size) # kast dimension is the vocab size
+layer_norm2 = nn.LayerNorm(vocab_size) # last dimension is the vocab size
 
 
 # Define the loss function
@@ -253,7 +254,7 @@ log.info(f"Length of input ids ={len(input_ids)}")
 
 # We'll combine these into a simple pipeline
 model = nn.ModuleList([token_embedding, pos_encoding,
-                      attention_mod,layer_norm,prediction_layer1,prediction_layer2])
+                      attention_mod,layer_norm1,layer_norm2,prediction_layer1,prediction_layer2])
 
 # The most important part is the Stochastic Gradient Descent part
 # Using model.parameters() in optimizer.step() ensures all layers, including token_embedding, attention_mod, and prediction_layer, are updated
@@ -314,9 +315,9 @@ for epoch in range(10):
         score,_ = attention_mod(pos_embedded_tokens)
         # Predict the next word
         hidden1 = prediction_layer1(score)  # Project to vocabulary size
+        hidden1 = layer_norm1(hidden1)         # add layer norm
         logits = prediction_layer2(hidden1)  # through few linear layers
-        # add layer norm
-        logits = layer_norm(logits)
+        logits = layer_norm2(logits)      # add layer norm
         # the last dimension of the output tensor represents the vocabulary size or the number of classes.
         # Therefore, applying softmax along the last dimension (dim=-1)
         predicted_probs = torch.softmax(logits, dim=-1)  # Get probabilities
@@ -359,7 +360,7 @@ generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
 # Convert to tensor
 input_tensor = torch.tensor(
     generated_tokens, dtype=torch.long).unsqueeze(0)  # (1, seq_length)
-max_length = 10
+max_length = 100
 for _ in range(max_length):
     # Get embedding
     embedded_tokens = token_embedding(input_tensor.to('cuda'))
@@ -368,7 +369,8 @@ for _ in range(max_length):
     # Predict the next word
     hidden1 = prediction_layer1(score)  # (1, seq_length, vocab_size)
     logits = prediction_layer2(hidden1)  # (1, seq_length, vocab_size)
-    
+    # add layer norm
+    logits = layer_norm2(logits)
     # Get the last token's logits (for autoregressive prediction)
     next_token_logits = logits[:, -1, :]  # Shape: (1, vocab_size)
     # Convert logits to token probabilities

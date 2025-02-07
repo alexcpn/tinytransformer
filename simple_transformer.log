@@ -1,0 +1,262 @@
+06-Feb-25 18:05:34 - Length of trainig data is  2119719
+06-Feb-25 18:05:36 - Limiting training legth to 100000
+06-Feb-25 18:05:36 - Training Non contextual tokeniser
+06-Feb-25 18:05:41 - Sentence: The Cat sat on the Fence
+06-Feb-25 18:05:41 - Tokens:  ['The▁', 'C', 'at▁', 'sat▁', 'on▁', 'the▁', 'F', 'en', 'ce▁']
+06-Feb-25 18:05:41 - Token IDs: [60, 1947, 50, 1134, 56, 16, 1945, 23, 123]
+06-Feb-25 18:05:41 - Token ids already present in file
+06-Feb-25 18:05:45 - Total tokens:  24471344
+06-Feb-25 18:05:45 - Resizing input_ids...
+06-Feb-25 18:05:46 - input_ids.shape=torch.Size([1, 24471344])
+06-Feb-25 18:05:46 - New shape:= torch.Size([24471, 1000])
+06-Feb-25 18:05:46 - vocab_size=2000 embedding_dim/d_model=512
+06-Feb-25 18:05:46 - Length of input ids =24471
+06-Feb-25 18:05:48 - Training model...
+06-Feb-25 18:05:48 - N= 24471 seq_length= 1000
+06-Feb-25 18:05:48 - batch_input.shape=torch.Size([50, 1000])
+06-Feb-25 18:05:48 - batch_labels.shape=torch.Size([50, 1000])
+06-Feb-25 18:05:48 - Example input: One day, a little girl named Lily found a 
+06-Feb-25 18:05:48 - Example labels: day, a little girl named Lily found a need
+06-Feb-25 18:05:48 - [Epoch=1 | Batch=0] loss=8.1075
+06-Feb-25 18:06:26 - [Epoch=1 | Batch=50] loss=4.4464
+06-Feb-25 18:07:04 - [Epoch=1 | Batch=100] loss=4.2713
+06-Feb-25 18:07:43 - [Epoch=1 | Batch=150] loss=4.3047
+06-Feb-25 18:08:22 - [Epoch=1 | Batch=200] loss=4.1749
+06-Feb-25 18:09:03 - [Epoch=1 | Batch=250] loss=3.9689
+06-Feb-25 18:09:44 - [Epoch=1 | Batch=300] loss=4.0351
+06-Feb-25 18:10:24 - [Epoch=1 | Batch=350] loss=3.7007
+06-Feb-25 18:11:04 - [Epoch=1 | Batch=400] loss=3.8601
+06-Feb-25 18:11:45 - [Epoch=1 | Batch=450] loss=3.9109
+06-Feb-25 18:12:17 - ---------Epoch 01 | Loss: 3.7388
+06-Feb-25 18:12:18 - [Epoch=2 | Batch=0] loss=3.8701
+06-Feb-25 18:12:59 - [Epoch=2 | Batch=50] loss=3.6182
+06-Feb-25 18:13:39 - [Epoch=2 | Batch=100] loss=3.7965
+06-Feb-25 18:14:20 - [Epoch=2 | Batch=150] loss=3.8938
+06-Feb-25 18:15:01 - [Epoch=2 | Batch=200] loss=3.8518
+06-Feb-25 18:15:43 - [Epoch=2 | Batch=250] loss=3.7304
+06-Feb-25 18:16:24 - [Epoch=2 | Batch=300] loss=3.7850
+06-Feb-25 18:17:05 - [Epoch=2 | Batch=350] loss=3.4403
+06-Feb-25 18:17:47 - [Epoch=2 | Batch=400] loss=3.5871
+06-Feb-25 18:18:29 - [Epoch=2 | Batch=450] loss=3.7294
+06-Feb-25 18:19:01 - ---------Epoch 02 | Loss: 3.5387
+06-Feb-25 18:19:02 - [Epoch=3 | Batch=0] loss=3.6817
+06-Feb-25 18:19:46 - [Epoch=3 | Batch=50] loss=3.4475
+06-Feb-25 18:20:28 - [Epoch=3 | Batch=100] loss=3.6457
+06-Feb-25 18:21:10 - [Epoch=3 | Batch=150] loss=3.7276
+06-Feb-25 18:21:52 - [Epoch=3 | Batch=200] loss=3.7111
+06-Feb-25 18:22:34 - [Epoch=3 | Batch=250] loss=3.5104
+06-Feb-25 18:23:15 - [Epoch=3 | Batch=300] loss=3.6110
+06-Feb-25 18:23:57 - [Epoch=3 | Batch=350] loss=3.2722
+06-Feb-25 18:24:38 - [Epoch=3 | Batch=400] loss=3.3933
+06-Feb-25 18:25:20 - [Epoch=3 | Batch=450] loss=3.5753
+06-Feb-25 18:25:53 - ---------Epoch 03 | Loss: 3.3854
+06-Feb-25 18:25:54 - [Epoch=4 | Batch=0] loss=3.5326
+06-Feb-25 18:26:36 - [Epoch=4 | Batch=50] loss=3.3071
+06-Feb-25 18:27:18 - [Epoch=4 | Batch=100] loss=3.4799
+06-Feb-25 18:28:00 - [Epoch=4 | Batch=150] loss=3.5845
+06-Feb-25 18:28:42 - [Epoch=4 | Batch=200] loss=3.5614
+06-Feb-25 18:29:23 - [Epoch=4 | Batch=250] loss=3.3614
+06-Feb-25 18:30:05 - [Epoch=4 | Batch=300] loss=3.4818
+06-Feb-25 18:30:48 - [Epoch=4 | Batch=350] loss=3.1342
+06-Feb-25 18:31:33 - [Epoch=4 | Batch=400] loss=3.2886
+06-Feb-25 18:32:17 - [Epoch=4 | Batch=450] loss=3.4561
+06-Feb-25 18:32:51 - ---------Epoch 04 | Loss: 3.2888
+06-Feb-25 18:32:52 - [Epoch=5 | Batch=0] loss=3.4284
+06-Feb-25 18:33:37 - [Epoch=5 | Batch=50] loss=3.1915
+06-Feb-25 18:34:21 - [Epoch=5 | Batch=100] loss=3.3716
+06-Feb-25 18:35:06 - [Epoch=5 | Batch=150] loss=3.4687
+06-Feb-25 18:35:49 - [Epoch=5 | Batch=200] loss=3.4661
+06-Feb-25 18:36:31 - [Epoch=5 | Batch=250] loss=3.2803
+06-Feb-25 18:37:13 - [Epoch=5 | Batch=300] loss=3.3849
+06-Feb-25 18:37:56 - [Epoch=5 | Batch=350] loss=3.0471
+06-Feb-25 18:38:39 - [Epoch=5 | Batch=400] loss=3.1786
+06-Feb-25 18:39:21 - [Epoch=5 | Batch=450] loss=3.3650
+06-Feb-25 18:39:54 - ---------Epoch 05 | Loss: 3.1814
+06-Feb-25 18:39:55 - [Epoch=6 | Batch=0] loss=3.3228
+06-Feb-25 18:40:37 - [Epoch=6 | Batch=50] loss=3.1025
+06-Feb-25 18:41:18 - [Epoch=6 | Batch=100] loss=3.2736
+06-Feb-25 18:41:59 - [Epoch=6 | Batch=150] loss=3.4032
+06-Feb-25 18:42:39 - [Epoch=6 | Batch=200] loss=3.3809
+06-Feb-25 18:43:21 - [Epoch=6 | Batch=250] loss=3.1873
+06-Feb-25 18:44:02 - [Epoch=6 | Batch=300] loss=3.3011
+06-Feb-25 18:44:44 - [Epoch=6 | Batch=350] loss=2.9771
+06-Feb-25 18:45:25 - [Epoch=6 | Batch=400] loss=3.1402
+06-Feb-25 18:46:06 - [Epoch=6 | Batch=450] loss=3.2906
+06-Feb-25 18:46:37 - ---------Epoch 06 | Loss: 3.1284
+06-Feb-25 18:46:38 - [Epoch=7 | Batch=0] loss=3.2594
+06-Feb-25 18:47:19 - [Epoch=7 | Batch=50] loss=3.0408
+06-Feb-25 18:48:00 - [Epoch=7 | Batch=100] loss=3.2273
+06-Feb-25 18:48:41 - [Epoch=7 | Batch=150] loss=3.3384
+06-Feb-25 18:49:23 - [Epoch=7 | Batch=200] loss=3.3322
+06-Feb-25 18:50:03 - [Epoch=7 | Batch=250] loss=3.1411
+06-Feb-25 18:50:44 - [Epoch=7 | Batch=300] loss=3.2511
+06-Feb-25 18:51:24 - [Epoch=7 | Batch=350] loss=2.9276
+06-Feb-25 18:52:05 - [Epoch=7 | Batch=400] loss=3.0804
+06-Feb-25 18:52:46 - [Epoch=7 | Batch=450] loss=3.2619
+06-Feb-25 18:53:16 - ---------Epoch 07 | Loss: 3.0855
+06-Feb-25 18:53:17 - [Epoch=8 | Batch=0] loss=3.2198
+06-Feb-25 18:53:57 - [Epoch=8 | Batch=50] loss=3.0010
+06-Feb-25 18:54:37 - [Epoch=8 | Batch=100] loss=3.1828
+06-Feb-25 18:55:18 - [Epoch=8 | Batch=150] loss=3.2914
+06-Feb-25 18:55:58 - [Epoch=8 | Batch=200] loss=3.2910
+06-Feb-25 18:56:38 - [Epoch=8 | Batch=250] loss=3.0980
+06-Feb-25 18:57:18 - [Epoch=8 | Batch=300] loss=3.2238
+06-Feb-25 18:57:58 - [Epoch=8 | Batch=350] loss=2.8835
+06-Feb-25 18:58:38 - [Epoch=8 | Batch=400] loss=3.0599
+06-Feb-25 18:59:18 - [Epoch=8 | Batch=450] loss=3.2141
+06-Feb-25 18:59:48 - ---------Epoch 08 | Loss: 3.0382
+06-Feb-25 18:59:49 - [Epoch=9 | Batch=0] loss=3.1746
+06-Feb-25 19:00:29 - [Epoch=9 | Batch=50] loss=2.9603
+06-Feb-25 19:01:09 - [Epoch=9 | Batch=100] loss=3.1375
+06-Feb-25 19:01:49 - [Epoch=9 | Batch=150] loss=3.2640
+06-Feb-25 19:02:29 - [Epoch=9 | Batch=200] loss=3.2478
+06-Feb-25 19:03:09 - [Epoch=9 | Batch=250] loss=3.0543
+06-Feb-25 19:03:49 - [Epoch=9 | Batch=300] loss=3.1844
+06-Feb-25 19:04:29 - [Epoch=9 | Batch=350] loss=2.8432
+06-Feb-25 19:05:09 - [Epoch=9 | Batch=400] loss=3.0071
+06-Feb-25 19:05:49 - [Epoch=9 | Batch=450] loss=3.1816
+06-Feb-25 19:06:19 - ---------Epoch 09 | Loss: 2.9973
+06-Feb-25 19:06:20 - [Epoch=10 | Batch=0] loss=3.1356
+06-Feb-25 19:07:00 - [Epoch=10 | Batch=50] loss=2.9191
+06-Feb-25 19:07:40 - [Epoch=10 | Batch=100] loss=3.0974
+06-Feb-25 19:08:21 - [Epoch=10 | Batch=150] loss=3.2040
+06-Feb-25 19:09:01 - [Epoch=10 | Batch=200] loss=3.2259
+06-Feb-25 19:09:41 - [Epoch=10 | Batch=250] loss=3.0232
+06-Feb-25 19:10:21 - [Epoch=10 | Batch=300] loss=3.1497
+06-Feb-25 19:11:02 - [Epoch=10 | Batch=350] loss=2.8186
+06-Feb-25 19:11:42 - [Epoch=10 | Batch=400] loss=2.9705
+06-Feb-25 19:12:22 - [Epoch=10 | Batch=450] loss=3.1599
+06-Feb-25 19:12:52 - ---------Epoch 10 | Loss: 2.9738
+06-Feb-25 19:12:52 - Model weights saved
+06-Feb-25 19:12:52 - Generated Text=Bloom lived in a big garden with lots of funny. He was so excited 
+06-Feb-25 20:55:36 - Length of trainig data is  2119719
+06-Feb-25 20:55:38 - Limiting training legth to 100000
+06-Feb-25 20:55:38 - Training Non contextual tokeniser
+06-Feb-25 20:55:43 - Sentence: The Cat sat on the Fence
+06-Feb-25 20:55:43 - Tokens:  ['The▁', 'C', 'at▁', 'sat▁', 'on▁', 'the▁', 'F', 'en', 'ce▁']
+06-Feb-25 20:55:43 - Token IDs: [60, 1947, 50, 1134, 56, 16, 1945, 23, 123]
+06-Feb-25 20:55:43 - Token ids already present in file
+06-Feb-25 20:55:46 - Total tokens:  24471344
+06-Feb-25 20:55:46 - Resizing input_ids...
+06-Feb-25 20:55:47 - input_ids.shape=torch.Size([1, 24471344])
+06-Feb-25 20:55:47 - New shape:= torch.Size([24471, 1000])
+06-Feb-25 20:55:47 - vocab_size=2000 embedding_dim/d_model=512
+06-Feb-25 20:55:47 - Length of input ids =24471
+06-Feb-25 20:55:48 - Training model...
+06-Feb-25 20:55:48 - N= 24471 seq_length= 1000
+06-Feb-25 20:55:48 - batch_input.shape=torch.Size([50, 1000])
+06-Feb-25 20:55:48 - batch_labels.shape=torch.Size([50, 1000])
+06-Feb-25 20:55:48 - Example input: One day, a little girl named Lily found a 
+06-Feb-25 20:55:48 - Example labels: day, a little girl named Lily found a need
+06-Feb-25 20:55:49 - [Epoch=1 | Batch=0] loss=8.0609
+06-Feb-25 20:56:31 - [Epoch=1 | Batch=50] loss=4.4684
+06-Feb-25 20:57:12 - [Epoch=1 | Batch=100] loss=4.3053
+06-Feb-25 20:57:54 - [Epoch=1 | Batch=150] loss=4.2799
+06-Feb-25 20:58:37 - [Epoch=1 | Batch=200] loss=4.1296
+06-Feb-25 20:59:20 - [Epoch=1 | Batch=250] loss=3.9386
+06-Feb-25 21:00:03 - [Epoch=1 | Batch=300] loss=4.0079
+06-Feb-25 21:00:46 - [Epoch=1 | Batch=350] loss=3.6360
+06-Feb-25 21:01:29 - [Epoch=1 | Batch=400] loss=3.8273
+06-Feb-25 21:02:12 - [Epoch=1 | Batch=450] loss=3.8973
+06-Feb-25 21:02:45 - ---------Epoch 01 | Loss: 3.6997
+06-Feb-25 21:02:46 - [Epoch=2 | Batch=0] loss=3.8402
+06-Feb-25 21:03:29 - [Epoch=2 | Batch=50] loss=3.5905
+06-Feb-25 21:04:13 - [Epoch=2 | Batch=100] loss=3.7714
+06-Feb-25 21:04:56 - [Epoch=2 | Batch=150] loss=3.8538
+06-Feb-25 21:05:40 - [Epoch=2 | Batch=200] loss=3.8147
+06-Feb-25 21:06:24 - [Epoch=2 | Batch=250] loss=3.6833
+06-Feb-25 21:07:08 - [Epoch=2 | Batch=300] loss=3.7380
+06-Feb-25 21:07:53 - [Epoch=2 | Batch=350] loss=3.4194
+06-Feb-25 21:08:37 - [Epoch=2 | Batch=400] loss=3.5240
+06-Feb-25 21:09:21 - [Epoch=2 | Batch=450] loss=3.6807
+06-Feb-25 21:09:55 - ---------Epoch 02 | Loss: 3.5054
+06-Feb-25 21:09:55 - [Epoch=3 | Batch=0] loss=3.6478
+06-Feb-25 21:10:40 - [Epoch=3 | Batch=50] loss=3.4336
+06-Feb-25 21:11:24 - [Epoch=3 | Batch=100] loss=3.6064
+06-Feb-25 21:12:09 - [Epoch=3 | Batch=150] loss=3.6805
+06-Feb-25 21:12:53 - [Epoch=3 | Batch=200] loss=3.6754
+06-Feb-25 21:13:38 - [Epoch=3 | Batch=250] loss=3.4947
+06-Feb-25 21:14:23 - [Epoch=3 | Batch=300] loss=3.5715
+06-Feb-25 21:15:08 - [Epoch=3 | Batch=350] loss=3.2410
+06-Feb-25 21:15:53 - [Epoch=3 | Batch=400] loss=3.3656
+06-Feb-25 21:16:38 - [Epoch=3 | Batch=450] loss=3.5530
+06-Feb-25 21:17:13 - ---------Epoch 03 | Loss: 3.3783
+06-Feb-25 21:17:13 - [Epoch=4 | Batch=0] loss=3.5255
+06-Feb-25 21:17:58 - [Epoch=4 | Batch=50] loss=3.2693
+06-Feb-25 21:18:43 - [Epoch=4 | Batch=100] loss=3.4524
+06-Feb-25 21:19:29 - [Epoch=4 | Batch=150] loss=3.5498
+06-Feb-25 21:20:15 - [Epoch=4 | Batch=200] loss=3.5375
+06-Feb-25 21:21:00 - [Epoch=4 | Batch=250] loss=3.3487
+06-Feb-25 21:21:45 - [Epoch=4 | Batch=300] loss=3.4538
+06-Feb-25 21:22:31 - [Epoch=4 | Batch=350] loss=3.1175
+06-Feb-25 21:23:15 - [Epoch=4 | Batch=400] loss=3.2554
+06-Feb-25 21:24:00 - [Epoch=4 | Batch=450] loss=3.4297
+06-Feb-25 21:24:34 - ---------Epoch 04 | Loss: 3.2473
+06-Feb-25 21:24:34 - [Epoch=5 | Batch=0] loss=3.3879
+06-Feb-25 21:25:21 - [Epoch=5 | Batch=50] loss=3.1609
+06-Feb-25 21:26:09 - [Epoch=5 | Batch=100] loss=3.3524
+06-Feb-25 21:26:56 - [Epoch=5 | Batch=150] loss=3.4572
+06-Feb-25 21:27:41 - [Epoch=5 | Batch=200] loss=3.4473
+06-Feb-25 21:28:26 - [Epoch=5 | Batch=250] loss=3.2548
+06-Feb-25 21:29:12 - [Epoch=5 | Batch=300] loss=3.3715
+06-Feb-25 21:29:56 - [Epoch=5 | Batch=350] loss=3.0318
+06-Feb-25 21:30:41 - [Epoch=5 | Batch=400] loss=3.1964
+06-Feb-25 21:31:27 - [Epoch=5 | Batch=450] loss=3.3573
+06-Feb-25 21:32:02 - ---------Epoch 05 | Loss: 3.1812
+06-Feb-25 21:32:03 - [Epoch=6 | Batch=0] loss=3.3264
+06-Feb-25 21:32:48 - [Epoch=6 | Batch=50] loss=3.0928
+06-Feb-25 21:33:33 - [Epoch=6 | Batch=100] loss=3.2772
+06-Feb-25 21:34:19 - [Epoch=6 | Batch=150] loss=3.3732
+06-Feb-25 21:35:04 - [Epoch=6 | Batch=200] loss=3.3801
+06-Feb-25 21:35:49 - [Epoch=6 | Batch=250] loss=3.2162
+06-Feb-25 21:36:34 - [Epoch=6 | Batch=300] loss=3.3076
+06-Feb-25 21:37:20 - [Epoch=6 | Batch=350] loss=2.9636
+06-Feb-25 21:38:05 - [Epoch=6 | Batch=400] loss=3.0992
+06-Feb-25 21:38:50 - [Epoch=6 | Batch=450] loss=3.2958
+06-Feb-25 21:39:24 - ---------Epoch 06 | Loss: 3.1183
+06-Feb-25 21:39:25 - [Epoch=7 | Batch=0] loss=3.2610
+06-Feb-25 21:40:10 - [Epoch=7 | Batch=50] loss=3.0332
+06-Feb-25 21:40:55 - [Epoch=7 | Batch=100] loss=3.2164
+06-Feb-25 21:41:41 - [Epoch=7 | Batch=150] loss=3.3257
+06-Feb-25 21:42:27 - [Epoch=7 | Batch=200] loss=3.3112
+06-Feb-25 21:43:12 - [Epoch=7 | Batch=250] loss=3.1422
+06-Feb-25 21:43:56 - [Epoch=7 | Batch=300] loss=3.2702
+06-Feb-25 21:44:40 - [Epoch=7 | Batch=350] loss=2.9143
+06-Feb-25 21:45:23 - [Epoch=7 | Batch=400] loss=3.0537
+06-Feb-25 21:46:06 - [Epoch=7 | Batch=450] loss=3.2450
+06-Feb-25 21:46:39 - ---------Epoch 07 | Loss: 3.0691
+06-Feb-25 21:46:40 - [Epoch=8 | Batch=0] loss=3.2075
+06-Feb-25 21:47:23 - [Epoch=8 | Batch=50] loss=2.9829
+06-Feb-25 21:48:07 - [Epoch=8 | Batch=100] loss=3.1805
+06-Feb-25 21:48:50 - [Epoch=8 | Batch=150] loss=3.2917
+06-Feb-25 21:49:33 - [Epoch=8 | Batch=200] loss=3.2779
+06-Feb-25 21:50:16 - [Epoch=8 | Batch=250] loss=3.0950
+06-Feb-25 21:50:58 - [Epoch=8 | Batch=300] loss=3.2056
+06-Feb-25 21:51:40 - [Epoch=8 | Batch=350] loss=2.8878
+06-Feb-25 21:52:23 - [Epoch=8 | Batch=400] loss=3.0252
+06-Feb-25 21:53:06 - [Epoch=8 | Batch=450] loss=3.2192
+06-Feb-25 21:53:38 - ---------Epoch 08 | Loss: 3.0422
+06-Feb-25 21:53:39 - [Epoch=9 | Batch=0] loss=3.1802
+06-Feb-25 21:54:21 - [Epoch=9 | Batch=50] loss=2.9515
+06-Feb-25 21:55:04 - [Epoch=9 | Batch=100] loss=3.1334
+06-Feb-25 21:55:46 - [Epoch=9 | Batch=150] loss=3.2621
+06-Feb-25 21:56:28 - [Epoch=9 | Batch=200] loss=3.2751
+06-Feb-25 21:57:11 - [Epoch=9 | Batch=250] loss=3.0698
+06-Feb-25 21:57:53 - [Epoch=9 | Batch=300] loss=3.1703
+06-Feb-25 21:58:35 - [Epoch=9 | Batch=350] loss=2.8462
+06-Feb-25 21:59:17 - [Epoch=9 | Batch=400] loss=2.9711
+06-Feb-25 22:00:00 - [Epoch=9 | Batch=450] loss=3.1826
+06-Feb-25 22:00:32 - ---------Epoch 09 | Loss: 3.0211
+06-Feb-25 22:00:32 - [Epoch=10 | Batch=0] loss=3.1562
+06-Feb-25 22:01:14 - [Epoch=10 | Batch=50] loss=2.9395
+06-Feb-25 22:01:56 - [Epoch=10 | Batch=100] loss=3.1113
+06-Feb-25 22:02:39 - [Epoch=10 | Batch=150] loss=3.2259
+06-Feb-25 22:03:21 - [Epoch=10 | Batch=200] loss=3.2216
+06-Feb-25 22:04:03 - [Epoch=10 | Batch=250] loss=3.0276
+06-Feb-25 22:04:45 - [Epoch=10 | Batch=300] loss=3.1523
+06-Feb-25 22:05:28 - [Epoch=10 | Batch=350] loss=2.8145
+06-Feb-25 22:06:10 - [Epoch=10 | Batch=400] loss=2.9704
+06-Feb-25 22:06:53 - [Epoch=10 | Batch=450] loss=3.1552
+06-Feb-25 22:07:25 - ---------Epoch 10 | Loss: 2.9923
+06-Feb-25 22:07:26 - Model weights saved
+06-Feb-25 22:07:26 - Generated Text=Bloom lived in a big garden with lots of funny. He wanted to play with lots of funny. He asked his friends, but he could not see what he could not see what he could not see what he could not see what he could do not see what he could do not see what he could do not see what he could do not see what he could do not see what he could do not see what he could do not see what he could do not see what he could do not see what he could do not 
