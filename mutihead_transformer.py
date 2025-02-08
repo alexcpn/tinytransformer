@@ -32,8 +32,9 @@ from datasets import load_dataset
 import math
 import logging as log
 import os
+import datatime as date
 
-outfile='simple_transformer.log'
+outfile=f"/logs/{date.datetime.now()}simple_transformer.log"
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -53,18 +54,13 @@ trainingdata = ds['train']['text'][:train_size]
 log.info(f"Limiting training legth to {len(trainingdata)}")
 
 # 1) Write the list to a file.
-with open("train.txt", "w", encoding="utf-8") as f:
+with open("./data/train.txt", "w", encoding="utf-8") as f:
     for line in trainingdata:
         # replace newline with space to keep each original text chunk on a single line
         #replace special characters
         line = line.replace("â€", "")
         f.write(line.replace("\n", " ") + "\n")
-# for vocabulary training
-# trainingdata2 = ds['train']['text'][:10000]
-# with open("vocabtrain.txt", "w", encoding="utf-8") as f:
-#     for line in trainingdata2:
-#         # replace newline with space to keep each original text chunk on a single line
-#         f.write(line.replace("\n", " ") + "\n")
+
 test_sentence = "The Cat sat on the Fence"
 # We use a small vocab_size just for demo. LLaMA uses a much larger vocabulary (32k tokens).
 vocab_size = 2000
@@ -84,7 +80,7 @@ spm.SentencePieceTrainer.Train(
 )
 
 sp = spm.SentencePieceProcessor()
-sp.load("llama_like.model")
+sp.load("./data/llama_like.model")
 
 tokens = sp.encode(test_sentence, out_type=str)
 token_ids = sp.encode(test_sentence, out_type=int)
@@ -103,9 +99,9 @@ log.info(f"Token IDs: {token_ids}")
 # Now lets tokenise the entire text and generate a map of input_ids
 all_token_ids = []
 
-if not os.path.isfile("token_ids.txt"):
+if not os.path.isfile("./data/token_ids.txt"):
     log.info("Tokenizing text...")
-    with open("train.txt", "r", encoding="utf-8") as f:
+    with open("./data/train.txt", "r", encoding="utf-8") as f:
         for line in f:
             # Encode each line to token IDs
             line_ids = sp.encode(line, out_type=int)
@@ -113,14 +109,14 @@ if not os.path.isfile("token_ids.txt"):
             all_token_ids.extend(line_ids)
             # all_token_ids.append(eol_id)  # If you have a special EOL token
     # Write token IDs to file
-    with open("token_ids.txt", "w", encoding="utf-8") as f:
+    with open("./data/token_ids.txt", "w", encoding="utf-8") as f:
         for token_id in all_token_ids:
             f.write(f"{token_id}\n")
 else:
     log.info("Token ids already present in file")
     #read token ids from file
     all_token_ids = []
-    with open("token_ids.txt", "r", encoding="utf-8") as f:
+    with open("./data/token_ids.txt", "r", encoding="utf-8") as f:
         for line in f:
             all_token_ids.append(int(line))
         
@@ -362,7 +358,7 @@ for epoch in range(10):
 """# Use the trained model to predict"""
 
 # save the model weights
-torch.save(model.state_dict(), "model_weights_mh.pth")
+torch.save(model.state_dict(), f"./weights/{date.datetime.now()}_model_weights_mh.pth")
 log.info("Model weights saved")
 model.eval()  # Set to evaluation mode
 

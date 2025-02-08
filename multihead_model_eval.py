@@ -5,14 +5,14 @@ import torch
 import sentencepiece as spm
 import math
 import logging as log
-
+import datetime as date
 vocab_size = 2000
 d_model = 512  # embediding size
 d_k = 64  # attention size
 seq_length = 1000
 
 model_path = "model_weights_mh.pth"
-outfile='multihead_eval_transformer.log'
+outfile=f"./logs/{date.datetime.now()}_multihead_eval_transformer.log"
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -145,7 +145,7 @@ model.eval()  # Set to evaluation mode
 # Test the generation function
 prompt = "Bloom lived in a big garden"
 sp = spm.SentencePieceProcessor()
-sp.load("llama_like.model")
+sp.load("./data/llama_like.model")
 
 generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
 

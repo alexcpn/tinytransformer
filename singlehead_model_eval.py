@@ -5,14 +5,15 @@ import torch
 import sentencepiece as spm
 import math
 import logging as log
+import datetime as date
 
 vocab_size = 2000
 d_model = 512  # embediding size
 d_k = 64  # attention size
 seq_length = 1000
 
-model_path = "model_weights_sh.pth"
-outfile='eval_transformer.log'
+model_path = "./weights/model_weights_sh.pth"
+outfile=f"/logs/{date.datetime.now()}_eval_transformer.log"
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -126,7 +127,7 @@ model = nn.ModuleList([token_embedding, pos_encoding,
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
 sp = spm.SentencePieceProcessor()
-sp.load("llama_like.model")
+sp.load("./data/llama_like.model")
 
 # Place all in GPU
 token_embedding.to('cuda')
