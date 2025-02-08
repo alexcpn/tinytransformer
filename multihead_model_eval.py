@@ -11,7 +11,7 @@ d_model = 512  # embediding size
 d_k = 64  # attention size
 seq_length = 1000
 
-model_path = "model_weights_mh.pth"
+model_path = "./weights/model_weights_mh12.pth"
 outfile=f"./logs/{date.datetime.now()}_multihead_eval_transformer.log"
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
@@ -107,15 +107,15 @@ pos_encoding = PositionalEncoding(d_model, max_len=seq_length)
 # add in the attention layer
 
 # Add a linear layer for prediction
-num_heads=2
+num_heads=12
 multihead_attention = nn.ModuleList()
 for _ in range(num_heads):
     attention_mod = SingleHeadSelfAttention(d_model)
     multihead_attention.append(attention_mod)
     
-prediction_layer1 = nn.Linear(d_model*num_heads, vocab_size*2) # as we are concatenating the heads output
-layer_norm1 = nn.LayerNorm(vocab_size*2) 
-prediction_layer2 = nn.Linear(vocab_size*2, vocab_size)
+prediction_layer1 = nn.Linear(d_model*num_heads, vocab_size) # as we are concatenating the heads output
+layer_norm1 = nn.LayerNorm(vocab_size) 
+prediction_layer2 = nn.Linear(vocab_size, vocab_size)
 layer_norm2 = nn.LayerNorm(vocab_size) # last dimension is the vocab size
 
 # We'll combine these into a simple pipeline
@@ -145,7 +145,7 @@ model.eval()  # Set to evaluation mode
 # Test the generation function
 prompt = "Bloom lived in a big garden"
 sp = spm.SentencePieceProcessor()
-sp.load("./data/llama_like.model")
+sp.load("./weights/llama_like.model")
 
 generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
 
@@ -186,6 +186,12 @@ for _ in range(max_length):
     # Update input tensor with new token for next iteration
     input_tensor = torch.tensor(
         generated_tokens, dtype=torch.long).unsqueeze(0)
+    # test - see what the model is generating
+    all_tokens_id = torch.argmax(logits, dim=-1)  # (1, seq_length)
+    all_text = sp.decode(all_tokens_id.squeeze(0).tolist())
+    log.info(f"All Text={all_text}")
+    generated_text = sp.decode(input_tensor.squeeze(0).tolist())
+    log.info(f"Geberated Text={generated_text}")
 
 # Decode generated token IDs back to text
 generated_text = sp.decode(generated_tokens)

@@ -13,7 +13,7 @@ d_k = 64  # attention size
 seq_length = 1000
 
 model_path = "./weights/model_weights_sh.pth"
-outfile=f"/logs/{date.datetime.now()}_eval_transformer.log"
+outfile=f"./logs/{date.datetime.now()}_eval_transformer.log"
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -23,9 +23,7 @@ log.basicConfig(level=log.INFO,
                 ],
                 )
 
-#prompt = "Bloom lived in a big garden"
-prompt = "THe Cat chase the "
-
+prompt = "Bloom lived in a big garden"
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len):
@@ -127,7 +125,7 @@ model = nn.ModuleList([token_embedding, pos_encoding,
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4)
 
 sp = spm.SentencePieceProcessor()
-sp.load("./data/llama_like.model")
+sp.load("./weights/llama_like.model")
 
 # Place all in GPU
 token_embedding.to('cuda')
@@ -165,7 +163,7 @@ for _ in range(max_length):
     # Predict the next word
     hidden1 = prediction_layer1(score)  # (1, seq_length, vocab_size)
     logits = prediction_layer2(hidden1)  # (1, seq_length, vocab_size)
-    
+    print(logits.shape)
     # Get the last token's logits (for autoregressive prediction)
     next_token_logits = logits[:, -1, :]  # Shape: (1, vocab_size)
     # Convert logits to token probabilities
@@ -179,6 +177,13 @@ for _ in range(max_length):
     # Update input tensor with new token for next iteration
     input_tensor = torch.tensor(
         generated_tokens, dtype=torch.long).unsqueeze(0)
+    # test - see what the model is generating
+    all_tokens_id = torch.argmax(logits, dim=-1)  # (1, seq_length)
+    all_text = sp.decode(all_tokens_id.squeeze(0).tolist())
+    log.info(f"All Text={all_text}")
+    generated_text = sp.decode(input_tensor.squeeze(0).tolist())
+    log.info(f"Geberated Text={generated_text}")
+    
 
 # Test the generation function
 
