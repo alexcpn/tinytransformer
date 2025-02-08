@@ -1,0 +1,8 @@
+train.txt
+vocabtrain.txt
+llama_like.model
+llama_like.vocab
+model_weights_sh.pth
+model_weights.pth
+simple_ransformer.log
+model_weights_mh.pth
