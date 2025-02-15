@@ -38,8 +38,13 @@ import math
 import logging as log
 import os
 import gc
+import numpy as np
+import glob
+import random
+from datetime import datetime
+datetimesatmp = datetime.now().strftime("%Y%m%d%H%M%S")
 
-outfile='multihead_transformer.log'
+outfile=f"{datetimesatmp}_multihead_transformer.log"
 log.basicConfig(level=log.INFO,
                 format='%(asctime)s - %(message)s',
                 datefmt='%d-%b-%y %H:%M:%S',
@@ -52,20 +57,23 @@ log.basicConfig(level=log.INFO,
 
 # Load the small dataset for training our tiny language model
 ds = load_dataset("roneneldan/TinyStories")
-train_size = 100000 #len(ds['train']['text']) is about 2 million 2119719, lets limit to a million as else it is too slow
+train_size = len(ds['train']['text']) # load the full setis about 2 million 2119719,
+
 # use the dataset as text for training
 log.info(f"Length of trainig data is  {len(ds['train']['text'])}")
 # use half of this training data text
 trainingdata = ds['train']['text'][:train_size]
-log.info(f"Limiting training legth to {len(trainingdata)}")
 
-# 1) Write the list to a file.
-with open("train.txt", "w", encoding="utf-8") as f:
-    for line in trainingdata:
-        # replace newline with space to keep each original text chunk on a single line
-        #replace special characters
-        line = line.replace("â€", "")
-        f.write(line.replace("\n", " ") + "\n")
+TRAIN_FILE = "train.txt"
+if not os.path.exists(TRAIN_FILE):
+    # 1) Write the list to a file.
+    with open(TRAIN_FILE, "w", encoding="utf-8") as f:
+        for line in trainingdata:
+            # replace newline with space to keep each original text chunk on a single line
+            #replace special characters
+            line = line.replace("â€", "")
+            f.write(line.replace("\n", " ") + "\n")
+
 
 
 # We use a small vocab_size just for demo. LLaMA uses a much larger vocabulary (32k tokens).
@@ -96,6 +104,7 @@ spm.SentencePieceTrainer.Train(
     treat_whitespace_as_suffix=True,
     split_digits=True               # This forces splitting "123" -> "1", "2", "3"
 )
+log.info("Training of Vocabulary complete")
 
 sp = spm.SentencePieceProcessor()
 sp.load("llama_like.model")
@@ -107,70 +116,85 @@ log.info(f"Sentence: {test_sentence}")
 log.info(f"Tokens:  {tokens}")
 log.info(f"Token IDs: {token_ids}")
 
-# get the vocabulary dictionary mapping
-# print(sp.id_to_piece(60))
 
-# Step 1: Prepare the data for training the Attention layer
-
-# Now lets tokenise the entire text and generate a map of input_ids
-all_token_ids = []
-
-CHUNK_SIZE = 1024 * 1024*100  # Read 10MB chunks at a time
-if not os.path.isfile("token_ids.txt"):
-    log.info("Tokenizing text...")
-    with open("train.txt", "r", encoding="utf-8") as f, open("token_ids.txt", "w", encoding="utf-8") as out_f:
+# this takes a long time about an hour 
+def tokenize_and_split(input_file, seq_length,out_dir):
+    """
+    Tokenizes the entire dataset and splits it into multiple files of fixed sequence length.
+    """
+    if  os.path.exists(out_dir):
+        log.error(f"Token folder already exisitng: {out_dir} Not overwriting")
+        return
+    os.makedirs(out_dir, exist_ok=False)
+    
+    token_list = []
+    file_count = 0
+    CHUNK_SIZE = 1024 * 1024 * 100  # 100MB chunk for readin
+    with open(input_file, "r", encoding="utf-8") as f:
         while True:
-            chunk = f.read(CHUNK_SIZE)  # Read 1MB chunk
+            chunk = f.read(CHUNK_SIZE)  # Read large chunk
             if not chunk:
-                break  # Stop when EOF reached
+                break  # Stop at EOF
 
             token_ids = sp.encode(chunk, out_type=int)  # Tokenize chunk
-            out_f.write(" ".join(map(str, token_ids)) + " ")  # Write in bulk
-            all_token_ids.extend(token_ids)
+            token_list.extend(token_ids)
 
-    log.info("Tokenization complete. Data written to token_ids.txt")
+            # Save when we have enough tokens for multiple seq_length chunks
+            while len(token_list) >= seq_length:
+                split_tokens = token_list[:seq_length]
+                token_list = token_list[seq_length:]  # Remove saved tokens
 
-else:
-    log.info("Token ids already present in file")
-    #read token ids from file
-    all_token_ids = []
-    with open("token_ids.txt", "r", encoding="utf-8") as f:
-        all_token_ids = list(map(int, f.read().strip().split()))
+                # Save to a file
+                filename = os.path.join(out_dir, f"tokens_{file_count}.npy")
+                np.save(filename, np.array(split_tokens, dtype=np.int32))
+                file_count += 1
 
-log.info(f"Total tokens:  {len(all_token_ids)}")
+    log.info(f"Tokenization complete. Saved {file_count} files in '{OUTPUT_DIR}'")
+    
+# read the tokenised batches in random order
+def tokenized_batch_loader(output_dir, batch_size, seq_length):
+    """
+    Generator function to load tokenized files in batches while maintaining exact sequence length.
+    """
+    count = 0
+    token_files = sorted(glob.glob(os.path.join(output_dir, "tokens_*.npy")))
+    random.shuffle(token_files)  # Shuffle for better training dynamics
+    
+    token_buffer = []  # Buffer to store tokens across files
+    batch_buffer = []  # Buffer to store batches
+    
+    for token_file in token_files:
+        tokens = np.load(token_file).tolist()
+        token_buffer.extend(tokens)  # Append to buffer
+        
+        # Process the buffer into seq_length chunks
+        while len(token_buffer) >= seq_length:
+            count += 1
+            batch_buffer.append(token_buffer[:seq_length])
+            token_buffer = token_buffer[seq_length:]  # Remove used tokens
+            
+            # Yield when we have enough sequences for a batch
+            if len(batch_buffer) == batch_size:
+                batch_tensor = torch.tensor(batch_buffer, dtype=torch.long)
+                yield batch_tensor[:, :-1].cuda(), batch_tensor[:, 1:].cuda(),count
+                batch_buffer = []  # Reset buffer
 
-# Lets resize the input ids for training
+    # Process remaining sequences if they form a batch
+    if batch_buffer:
+        count+=1
+        batch_tensor = torch.tensor(batch_buffer, dtype=torch.long)
+        yield batch_tensor[:, :-1].cuda(), batch_tensor[:, 1:].cuda(),count
 
-log.info("Resizing input_ids...")
+OUTPUT_DIR ="./train_tokens"
+FILE_SEQ_LENGTH = 1000000
+# Run the tokenizer
+tokenize_and_split(TRAIN_FILE,seq_length=FILE_SEQ_LENGTH,out_dir=OUTPUT_DIR)
 
-# convert these to torch tensor
-input_ids = torch.tensor(all_token_ids, dtype=torch.long).unsqueeze(0)
-log.info(f"input_ids.shape={input_ids.shape}")
-# shape these (torch.Size([1, 380627])) chunk to batchsize of 1 and length of 50
-seq_length = 1000
-input_ids = input_ids.squeeze(0)  # Remove batch dim, now shape = (380627,)
-# How many 50-token chunks we can make
-num_chunks = input_ids.shape[0] // seq_length
-
-# Truncate to nearest multiple of 50
-input_ids = input_ids[:num_chunks * seq_length]
-# Reshape to (num_chunks, 50), each row is a sequence of 50 tokens
-input_ids = input_ids.view(num_chunks, seq_length)
-
-log.info(f"New shape:= {input_ids.shape}")  # Should be (num_chunks, 50)
-
-# this will be same as labels
-labels = input_ids.clone()
 
 # we need to add positional encoding to the input_ids
 # Positional encoding is a way to provide the model with information about the position of each token in the sequence.
 # This is important because the model has no inherent sense of order in the tokens, since it only sees them as embeddings.
 # generated by LLM
-vocab_size = 2000
-d_model = 512  # embediding size
-d_k = 64  # attention size
-seq_length = 1000
-
 class PositionalEncoding(nn.Module): # generated by ChatGPT
     def __init__(self, d_model, max_len):
         super().__init__()
@@ -201,10 +225,7 @@ class PositionalEncoding(nn.Module): # generated by ChatGPT
         x = x + self.pe[:seq_len, :].unsqueeze(0)
         return x
 
-
-"""### Step: Adding in a Simple Attention Class"""
 # Instead of doing Multi head sequentially like previous, lets do it in parallel
-
 class MultiHeadSelfAttention(nn.Module):
     def __init__(self, d_model, num_heads):
         """
@@ -256,24 +277,25 @@ class MultiHeadSelfAttention(nn.Module):
 
         return attention_output, attention_weights
 
-log.info(f"vocab_size={vocab_size} embedding_dim/d_model={d_model}")
 
 # Intialise all the layers
+vocab_size = 2000
+d_model = 512  # embediding size
+d_k = 64  # attention size
+read_seq_length = 1000
+log.info(f"vocab_size={vocab_size} embedding_dim/d_model={d_model}")
 
 # add in the embdeiing part from previous layer
 token_embedding = nn.Embedding(
     num_embeddings=vocab_size, embedding_dim=d_model)
-pos_encoding = PositionalEncoding(d_model, max_len=seq_length)
+pos_encoding = PositionalEncoding(d_model, max_len=read_seq_length)
 # add in the attention layer
 
 vocab_size = 2000
 d_model = 512  # embediding size
 d_k = 64  # attention size
 # Add a linear layer for prediction
-num_heads=2 # work on T4 GPU with bigger batch size
 num_heads=8 # work on A100 GPU
-
-
 
 multihead_attention = MultiHeadSelfAttention(d_model, num_heads)
 prediction_layer1 = nn.Linear(int(d_model/num_heads), d_model) # as we are concatenating the heads output
@@ -281,18 +303,14 @@ layer_norm1 = nn.LayerNorm(d_model)
 prediction_layer2 = nn.Linear(d_model, vocab_size)
 layer_norm2 = nn.LayerNorm(vocab_size) # last dimension is the vocab size
 
-
 # Define the loss function
 loss_function = nn.CrossEntropyLoss()
-
-
 # We'll combine these into a simple pipeline
 model = nn.ModuleList([token_embedding, pos_encoding,
                       multihead_attention,layer_norm1,layer_norm2,prediction_layer1,prediction_layer2])
 optimizer = torch.optim.AdamW(model.parameters(), lr=1e-4) # SGD is unstable and hence we use this
 
 # with higher learning loss is Nan
-
 
 # Place all in GPU
 token_embedding.to('cuda')
@@ -301,32 +319,16 @@ multihead_attention.to('cuda')
 prediction_layer1.to('cuda')
 prediction_layer2.to('cuda')
 model.to('cuda')
-
-batch_size = 80 # works on a T4 GPU free tier about 12 GB GPU RAM
-batch_size = 32 #A100 with num_head =12 == 34 GB
-batch_size = 10
-N, seq_length = input_ids.shape
-num_batches = N // batch_size
-log.info(f"N= {N} seq_length= {seq_length},num_batches ={num_batches}")
-
 #NO NEED TO EXECUTE THIS AGAIN ( this need A100, )
 log.info("Training model...")
 
-assert False == torch.isnan(input_ids).any()
-assert False == torch.isinf(input_ids).any()
-
+BATCH_SIZE =25 # 1 GB for Batch size 10
 model.train()
 
-for epoch in range(10):
-    for start_idx in range(0, N, batch_size):
-        end_idx = start_idx + batch_size
-        if end_idx > N:
-            break  # in case N not multiple of batch_size
+for epoch in range(1):
+    for batch_input, batch_labels,i in tokenized_batch_loader(OUTPUT_DIR, batch_size=BATCH_SIZE,seq_length=read_seq_length):
 
-        # Slice out a batch
-        batch_input = input_ids[start_idx:end_idx, :]   # (B, seq_length)
-        batch_labels = labels[start_idx:end_idx, :]     # (B, seq_length)
-        if epoch == 0 and start_idx == 0:
+        if epoch == 0 and i == 0:
             log.info(f"batch_input.shape={batch_input.shape}")
             log.info(f"batch_labels.shape={batch_labels.shape}")
 
@@ -336,9 +338,9 @@ for epoch in range(10):
 
         # 1) Shift input & labels so model predicts next token
         #    shape -> (B, seq_length-1)
-        trimmed_input = batch_input[:, :-1]
-        target_labels = batch_labels[:, 1:]
-        if epoch == 0 and start_idx == 0:
+        trimmed_input = batch_input
+        target_labels = batch_labels
+        if epoch == 0 and i == 0:
             # take 10 tokens
             log.info("Example input: %s", sp.decode(trimmed_input[0].tolist()[:10]))
             log.info("Example labels: %s",sp.decode(target_labels[0].tolist()[:10]))
@@ -370,8 +372,8 @@ for epoch in range(10):
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
         optimizer.step()
         # print training progress occasionally
-        if (start_idx // batch_size) % 50 == 0:
-            log.info("[Epoch=%d | Batch=%d] loss=%.4f", epoch+1, start_idx//batch_size, loss.item())
+        if i % 10000 == 0:
+            log.info("[Epoch=%d | Step=%d] loss=%.4f", epoch+1, i, loss.item())
         if loss.item() < 0.5:
             break
         # free gpu memory
@@ -384,16 +386,11 @@ for epoch in range(10):
 """# Use the trained model to predict"""
 
 # save the model weights
-torch.save(model.state_dict(), "model_weights.pth")
+#add data to the model
+
+torch.save(model.state_dict(), f"model_weights{datetimesatmp}.pth")
 log.info("Model weights saved")
 
-# prompt: copy weitghts to drive
-
-from google.colab import drive
-drive.mount('/content/drive')
-
-# load the model for evaluation
-model.load_state_dict(torch.load("model_weights12.pth"))
 
 model.eval()  # Set to evaluation mode
 
