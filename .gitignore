@@ -4,3 +4,4 @@ llama_like.model
 llama_like.vocab
 *.pth
 *.log
+train_tokens/*
