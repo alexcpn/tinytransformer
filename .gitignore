@@ -5,3 +5,5 @@ llama_like.vocab
 *.pth
 *.log
 train_tokens/*
+*npz
+*.npy
