@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Load loss data from the .npz file
-loss_log_file ="./loss_log_20250216171205_.npy.npz"
+loss_log_file = "./loss_log_20250217130252_.npy.npz"
 
 try:
     data = np.load(loss_log_file, allow_pickle=True)
@@ -21,13 +21,13 @@ loss_values = [entry[2] for entry in loss_history]  # Loss values
 
 # 🔹 Create the loss plot
 plt.figure(figsize=(12, 6))
-plt.plot(range(len(loss_values)), loss_values, label="Training Loss", color="blue", alpha=0.7)
-plt.scatter(range(len(loss_values)), loss_values, color="red", s=10, alpha=0.5)  # Scatter points for visibility
+plt.plot(steps, loss_values, label="Training Loss", color="blue", alpha=0.7)
+plt.scatter(steps, loss_values, color="red", s=10, alpha=0.5)  # Scatter points for visibility
 
 # 🔹 Labels and Titles
-plt.xlabel("Training Iteration")
+plt.xlabel("Training Steps")  # ✅ Use Steps on X-axis
 plt.ylabel("Loss")
-plt.title("Training Loss Over Time")
+plt.title("Training Loss Over Steps")
 plt.legend()
 plt.grid(True)
 

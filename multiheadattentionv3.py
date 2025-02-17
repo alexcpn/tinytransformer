@@ -19,6 +19,8 @@ import numpy as np
 import glob
 import random
 from datetime import datetime
+from transformers import get_cosine_schedule_with_warmup
+
 datetimesatmp = datetime.now().strftime("%Y%m%d%H%M%S")
 
 outfile = f"multihead_{datetimesatmp}_.log"
@@ -32,11 +34,13 @@ log.basicConfig(level=log.INFO,
                 force=True,
                 )
 
-loss_log_file = f"loss_log_{datetimesatmp}_.npy"
+loss_log_file_base = f"loss_log_{datetimesatmp}_.npy"
+loss_log_file = f"loss_log_{datetimesatmp}_.npy.npz"
 
 # Initialize loss log
 if not os.path.exists(loss_log_file):
-    np.save(loss_log_file, np.array([]))  # Create empty file if not present
+    np.savez_compressed(loss_log_file, loss=np.array([]))
+    log.info(f"Created path loss file {loss_log_file}")
 
 # Load the small dataset for training our tiny language model
 ds = load_dataset("roneneldan/TinyStories")
@@ -235,7 +239,7 @@ d_k = 64  # attention size
 num_heads = 8  # work on A100 GPU
 
 # multihead_attention = MultiHeadSelfAttention(d_model, num_heads)
-multihead_attention = nn.MultiheadAttention(d_model, num_heads, dropout=0.1)
+multihead_attention = nn.MultiheadAttention(d_model, num_heads, dropout=0.1,batch_first=True)
 layer_norm1 = nn.LayerNorm(d_model)
 prediction_layer2 = nn.Linear(d_model, vocab_size)
 layer_norm2 = nn.LayerNorm(vocab_size)  # last dimension is the vocab size
@@ -258,8 +262,12 @@ prediction_layer2.to('cuda')
 model.to('cuda')
 # NO NEED TO EXECUTE THIS AGAIN ( this need A100, )
 log.info("Training model...")
+model_path = "./weights/model_weights20250217094947.pth" # epoch 1
+model_path = "./weights/model_weights20250217130252.pth"  # epoch 2 # loss: 2.4915
+model.load_state_dict(torch.load(model_path))
+# load the previous weights
 
-BATCH_SIZE = 50  # 1 GB for Batch size 10
+BATCH_SIZE = 20  # 1 GB for Batch size 10
 model.train()
 loss_value_list = []
 
@@ -270,8 +278,12 @@ num_files = len(token_files)
 # Compute total steps
 steps_per_file = (FILE_SEQ_LENGTH // read_seq_length) // BATCH_SIZE
 total_steps = num_files * steps_per_file
-
 log.info(f"Total Training Steps: {total_steps}")
+
+# Add a scheduler to adjust the learning rate
+total_training_steps = total_steps
+warmup_steps = total_training_steps // 10  # 10% warmup
+
 
 for epoch in range(1):
     for batch_input, batch_labels, step in tokenized_batch_loader(OUTPUT_DIR, batch_size=BATCH_SIZE, seq_length=read_seq_length):
@@ -287,6 +299,15 @@ for epoch in range(1):
         #    shape -> (B, seq_length-1)
         trimmed_input = batch_input
         target_labels = batch_labels
+        embedded_tokens = token_embedding(trimmed_input)
+        # shape remains (batch_size, seq_len, d_model)
+        pos_embedded_tokens = pos_encoding(embedded_tokens)
+
+        # **Create Causal Mask**: Prevents attention to future tokens
+        seq_len =  pos_embedded_tokens.shape[1] 
+         # Create causal mask (Upper triangular matrix with -inf masking)
+        causal_mask = torch.triu(torch.ones(seq_len, seq_len), diagonal=1).to(pos_embedded_tokens.device)
+        causal_mask = causal_mask.masked_fill(causal_mask == 1, float('-inf'))  # Convert to -inf for softmax masking
         if epoch == 0 and step == 1:
             # take 10 tokens
             log.info("Example input: %s", sp.decode(
@@ -294,24 +315,27 @@ for epoch in range(1):
             log.info("Example labels: %s", sp.decode(
                 target_labels[0].tolist()[:10]))
             log.info(
-                f"trimmed_input.shape={trimmed_input.shape}, batch_size={BATCH_SIZE}, seq_length={read_seq_length}")
+                f"pos_embedded_tokens.shape={pos_embedded_tokens.shape}, causal_mask.shape={causal_mask.shape}"+
+                f"batch_size={BATCH_SIZE}, seq_length={read_seq_length}")
+        # Ensure `pos_embedded_tokens` has correct shape for MultiheadAttention
+        #pos_embedded_tokens = pos_embedded_tokens.permute(1, 0, 2)  # (seq_len, batch, d_model)
 
-        embedded_tokens = token_embedding(trimmed_input)
-        # shape remains (batch_size, seq_len, d_model)
-        pos_embedded_tokens = pos_encoding(embedded_tokens)
-        # parallize multihead attention via matrix dimensions
+        # **Apply MultiHeadAttention with Mask**
         score, _ = multihead_attention(
-            pos_embedded_tokens, pos_embedded_tokens, pos_embedded_tokens)
+            pos_embedded_tokens, pos_embedded_tokens, pos_embedded_tokens, attn_mask=causal_mask
+        )
+        # Convert back to (batch, seq_len, d_model)
+        #score = score.permute(1, 0, 2)
         hidden1 = score + pos_embedded_tokens  # add a residual layer for score
         hidden1 = layer_norm1(hidden1)         # add layer norm
         logits = prediction_layer2(hidden1)  # through few linear layers
         logits = layer_norm2(logits)      # add layer norm
         # the last dimension of the output tensor represents the vocabulary size or the number of classes.
         # Therefore, applying softmax along the last dimension (dim=-1)
-        predicted_probs = torch.softmax(logits, dim=-1)  # Get probabilities
-        # Get the predicted word (token ID)
-        predicted_token_id = torch.argmax(predicted_probs, dim=-1)
-        # Calculate the loss # crossentropy already does softmax inside
+        # predicted_probs = torch.softmax(logits, dim=-1)  # Get probabilities
+        # # Get the predicted word (token ID)
+        # predicted_token_id = torch.argmax(predicted_probs, dim=-1)
+        # # Calculate the loss # crossentropy already does softmax inside
         # If your input has 49 tokens, you predict 49 next tokens.
         loss = loss_function(
             logits.reshape(-1, vocab_size),
@@ -324,10 +348,11 @@ for epoch in range(1):
         optimizer.step()
         # print training progress occasionally
         loss_value_list.append((epoch, step, loss.item()))
-        if step % 100 == 0:
+        if step % 100 ==0:
             log.info("[Epoch=%d | Step=%d/%d] loss=%.4f",
                      epoch+1, step, total_steps,loss.item())
-            data = np.load(loss_log_file)
+        if step % 100 == 0:
+            data = np.load(loss_log_file,allow_pickle=True)
             loss_history = []
             if "loss" in data:
                 # Convert to list for appending
@@ -351,7 +376,7 @@ for epoch in range(1):
 # add data to the model
 
 torch.save(model.state_dict(), f"model_weights{datetimesatmp}.pth")
-log.info("Model weights saved")
+log.info(f"Model weights saved at  model_weights{datetimesatmp}.pth")
 
 
 model.eval()  # Set to evaluation mode
@@ -395,111 +420,4 @@ for _ in range(max_length):
 
 # Decode generated token IDs back to text
 generated_text = sp.decode(generated_tokens)
-log.info(f"Generated Text={generated_text}")
-
-
-def generate(prompt):
-    generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
-    # Convert to tensor
-    input_tensor = torch.tensor(
-        generated_tokens, dtype=torch.long).unsqueeze(0)  # (1, seq_length)
-    max_length = 100
-    for _ in range(max_length):
-        # Get embedding
-        embedded_tokens = token_embedding(input_tensor.to('cuda'))
-        # Get attention and score
-        # shape remains (batch_size, seq_len, d_model)
-        pos_embedded_tokens = pos_encoding(embedded_tokens)
-        score, _ = multihead_attention(
-            pos_embedded_tokens, pos_embedded_tokens, pos_embedded_tokens)
-        hidden1 = score + pos_embedded_tokens  # add a residual layer for score
-        hidden1 = layer_norm1(hidden1)         # add layer norm
-        logits = prediction_layer2(hidden1)  # through few linear layers
-        logits = layer_norm2(logits)      # add layer norm
-        predicted_probs = torch.softmax(logits, dim=-1)  # Get probabilities
-        # Get the last token's logits (for autoregressive prediction)
-        next_token_logits = predicted_probs[:, -1, :]  # Shape: (1, vocab_size)
-        # Convert logits to token probabilities
-        next_token_id = torch.argmax(next_token_logits, dim=-1)  # (1,)
-        # Append new token
-        generated_tokens.append(next_token_id.item())
-        # Stop if we generate an EOS token (optional)
-        if next_token_id.item() == sp.eos_id():  # Ensure your tokenizer has an EOS token
-            break
-
-        # Update input tensor with new token for next iteration
-        input_tensor = torch.tensor(
-            generated_tokens, dtype=torch.long).unsqueeze(0)
-
-    # Decode generated token IDs back to text
-    generated_text = sp.decode(generated_tokens)
-    return generated_text
-
-
-# Test the generation function
-prompt = "The Cat sat on the"
-generated_text = generate(prompt)
-log.info(f"Generated Text={generated_text}")
-
-# Adding temperature based sampling as per chatgpt
-
-
-def generate(prompt, max_length=100, temperature=1.0):
-    generated_tokens = sp.encode(prompt, out_type=int)  # Tokenize input text
-    input_tensor = torch.tensor(generated_tokens, dtype=torch.long).unsqueeze(
-        0).to('cuda')  # (1, seq_length)
-
-    for _ in range(max_length):
-        # Get embedding
-        embedded_tokens = token_embedding(input_tensor)
-        pos_embedded_tokens = pos_encoding(embedded_tokens)
-
-        score, _ = multihead_attention(
-            pos_embedded_tokens, pos_embedded_tokens, pos_embedded_tokens)
-        hidden1 = score + pos_embedded_tokens  # add a residual layer for score
-        hidden1 = layer_norm1(hidden1)         # add layer norm
-        logits = prediction_layer2(hidden1)  # through few linear layers
-        logits = layer_norm2(logits)      # add layer norm
-
-        # Get last token's logits (for autoregressive prediction)
-        next_token_logits = logits[:, -1, :]  # Shape: (1, vocab_size)
-
-        # Apply temperature-based scaling before sampling
-        scaled_logits = next_token_logits / temperature  # Adjust randomness
-        # Convert to probabilities
-        probabilities = F.softmax(scaled_logits, dim=-1)
-
-        # Sample from the probability distribution
-        next_token_id = torch.multinomial(
-            probabilities, num_samples=1).item()  # Random sampling
-
-        # Append new token
-        generated_tokens.append(next_token_id)
-
-        # Stop if we generate an EOS token (optional)
-        if next_token_id == sp.eos_id():  # Ensure your tokenizer has an EOS token
-            break
-
-        # Update input tensor with new token for next iteration
-        input_tensor = torch.tensor(
-            generated_tokens, dtype=torch.long).unsqueeze(0).to('cuda')
-
-    # Decode generated token IDs back to text
-    return sp.decode(generated_tokens)
-
-
-"""### **Controlling Temperature**
-
-| **Temperature (T)** | **Effect** |
-|--------------------|------------------------------|
-| **T = 0.1**  | Almost deterministic, like `argmax` |
-| **T = 0.7**  | Balanced creativity vs. coherence |
-| **T = 1.0**  | Standard sampling (default) |
-| **T = 1.5+**  | Very creative but may generate gibberish |
-
-"""
-
-# Test the generation function
-prompt = "The cat chased the "
-generated_text = generate(prompt, temperature=0.4)
 log.info(f"Generated Text={generated_text}")
